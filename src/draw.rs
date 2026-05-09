@@ -1,6 +1,7 @@
-use graphics::*;
-use piston_window::types::Color;
-use piston_window::*;
+use piston_window::graphics::*;
+use piston_window::graphics::types::Color;
+use piston_window::graphics::Context;
+use piston_window::wgpu_graphics::WgpuGraphics;
 
 const BLOCK_SIZE: f64 = 25.0;
 
@@ -12,7 +13,7 @@ pub fn to_coord_u32(game_coord: i32) -> u32 {
     to_coord(game_coord) as u32
 }
 
-pub fn draw_block(color: Color, x: i32, y: i32, con: &Context, g: &mut G2d) {
+pub fn draw_block(color: Color, x: i32, y: i32, con: &Context, g: &mut WgpuGraphics) {
     let gui_x = to_coord(x);
     let gui_y = to_coord(y);
 
@@ -31,7 +32,7 @@ pub fn draw_rect(
     width: i32,
     height: i32,
     con: &Context,
-    g: &mut G2d,
+    g: &mut WgpuGraphics,
 ) {
     let x = to_coord(x);
     let y = to_coord(y);

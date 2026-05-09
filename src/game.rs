@@ -1,6 +1,7 @@
-use graphics::*;
-use piston_window::types::Color;
-use piston_window::*;
+use piston_window::graphics::types::Color;
+use piston_window::graphics::Context;
+use piston_window::Key;
+use piston_window::wgpu_graphics::WgpuGraphics;
 
 use rand::{thread_rng, Rng};
 
@@ -63,7 +64,7 @@ impl Game {
         self.update_snake(dir);
     }
 
-    pub fn draw(&self, con: &Context, g: &mut G2d) {
+    pub fn draw(&self, con: &Context, g: &mut WgpuGraphics) {
         self.snake.draw(con, g);
 
         if self.food_exists {

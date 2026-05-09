@@ -1,6 +1,6 @@
-use graphics::*;
-use piston_window::types::Color;
-use piston_window::*;
+use piston_window::graphics::types::Color;
+use piston_window::graphics::Context;
+use piston_window::wgpu_graphics::WgpuGraphics;
 use std::collections::LinkedList;
 
 use crate::draw::draw_block;
@@ -53,7 +53,7 @@ impl Snake {
         }
     }
 
-    pub fn draw(&self, con: &Context, g: &mut G2d) {
+    pub fn draw(&self, con: &Context, g: &mut WgpuGraphics) {
         for block in &self.body {
             draw_block(SNAKE_COLOR, block.x, block.y, con, g);
         }

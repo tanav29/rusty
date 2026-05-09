@@ -5,7 +5,7 @@ mod draw;
 mod game;
 mod snake;
 
-use piston_window::types::Color;
+use piston_window::graphics::types::Color;
 use piston_window::*;
 
 use crate::draw::to_coord_u32;
@@ -29,9 +29,9 @@ fn main() {
             game.key_pressed(key);
         }
         window.draw_2d(&event, |c, g, _| {
-            use graphics::*;
+            use piston_window::graphics::*;
             clear(BLACK_COLOR, g);
-            game.draw(c.transform, g);
+            game.draw(&c, g);
         });
         event.update(|arg| {
             game.update(arg.dt);
