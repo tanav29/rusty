@@ -1,6 +1,15 @@
+#[derive(Debug, PartialEq)]
+pub enum Mode {
+    Normal,
+    Insert,
+}
+
 pub struct Editor {
     left: Vec<char>,
     right: Vec<char>,
+    pub mode: Mode,
+    pub posx: usize,
+    pub posy: usize,
 }
 
 impl Editor {
@@ -8,6 +17,9 @@ impl Editor {
         Self {
             left: Vec::new(),
             right: Vec::new(),
+            mode: Mode::Normal,
+            posx: 0,
+            posy: 0,
         }
     }
 
@@ -25,6 +37,7 @@ impl Editor {
     // insert character at cursor
     pub fn insert_character(&mut self, c: char) {
         self.left.push(c);
+        self.posx += 1;
     }
 
     // move cursor left
@@ -33,6 +46,7 @@ impl Editor {
         while pos != leftsize {
             self.right.push(self.left.pop().unwrap());
             leftsize = self.left.len();
+            self.posx -= 1;
         }
     }
 
@@ -41,14 +55,23 @@ impl Editor {
         let rightsize = self.right.len();
         let mut i = 1;
         if pos > rightsize {
-            println!("Cannot move the cursor right to the specified position");
+            // println!("Cannot move the cursor right to the specified position");
         } else {
             while i <= pos {
                 self.left.push(self.right.pop().unwrap());
                 i += 1;
+                self.posx += 1;
             }
         }
     }
+
+    pub fn move_down(&mut self, pos: usize) {
+        // pad: count the char till \0
+        // move the left pos till end of line for pos times
+        // move left pos to pad
+    }
+
+    pub fn move_up(&mut self, pos: usize) {}
 
     pub fn move_cursor(&mut self, pos: usize) {
         let leftsize = self.left.len();
@@ -60,23 +83,12 @@ impl Editor {
         }
     }
 
-    pub fn move_left_one(&mut self) {
-        if let Some(c) = self.left.pop() {
-            self.right.push(c);
-        }
-    }
-
-    pub fn move_right_one(&mut self) {
-        if let Some(c) = self.right.pop() {
-            self.left.push(c);
-        }
-    }
-
     pub fn backspace(&mut self) -> bool {
         if self.left.is_empty() {
             return false;
         } else {
             self.left.pop();
+            self.posx -= 1;
         }
         return true;
     }
@@ -99,13 +111,6 @@ impl Editor {
             s.push(*c);
         }
         s
-    }
-
-    pub fn examine_top(&self) {
-        let left: String = self.left.iter().collect();
-        let right: String = self.right.iter().rev().collect();
-
-        println!("{}|{}", left, right);
     }
 
     pub fn examine_string(&self) -> String {
