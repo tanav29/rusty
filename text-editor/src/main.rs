@@ -10,7 +10,9 @@ use ratatui::{
     layout::{Constraint, Direction, Layout},
     widgets::{Block, Borders, Paragraph},
 };
+
 use std::io::{self, Result, Stdout};
+use std::slice::GetDisjointMutError;
 
 mod editor;
 
@@ -42,32 +44,46 @@ fn app(terminal: &mut Terminal<CrosstermBackend<Stdout>>) -> Result<()> {
             }
             match key.code {
                 KeyCode::Char('q') => break,
-                KeyCode::Esc => editor.mode = Mode::Normal,
+                KeyCode::Esc => {
+                    editor.mode = Mode::Normal;
+                    editor.command = String::from("");
+                }
                 KeyCode::Char(c) => {
                     if editor.mode == Mode::Insert {
                         editor.insert_character(c);
-                    } else {
+                    } else if editor.mode == Mode::Normal {
                         match c {
                             'j' => editor.move_down(1),
                             'k' => editor.move_up(1),
                             'l' => editor.move_right(1),
                             'h' => editor.move_left(1),
                             'i' => editor.mode = Mode::Insert,
+                            ':' => editor.mode = Mode::Command,
                             _ => {}
                         }
+                    } else if editor.mode == Mode::Command {
+                        editor.command.push(c);
                     }
                 }
                 KeyCode::Enter => {
                     if editor.mode == Mode::Insert {
                         editor.insert_character('\n');
+                    } else if editor.mode == Mode::Command {
+                        // parse command
+                        editor.command = String::from("");
+                        editor.mode = Mode::Normal;
                     }
                 }
                 KeyCode::Delete => {
-                    editor.delete();
+                    if editor.mode != Mode::Command {
+                        editor.delete();
+                    }
                 }
                 KeyCode::Backspace => {
                     if editor.mode == Mode::Insert {
                         editor.backspace();
+                    } else if editor.mode == Mode::Command {
+                        editor.command.pop();
                     }
                 }
                 _ => {}
@@ -87,12 +103,13 @@ fn ui(frame: &mut Frame, editor: &Editor) {
         Paragraph::new(editor.examine_string()).block(Block::default().borders(Borders::NONE));
     frame.render_widget(paragraph, chunks[0]);
 
-    let status = format!(
-        " {:?} | {}:{} ",
-        editor.mode,
-        editor.posy + 1,
-        editor.posx + 1
-    );
+    let cmd = match editor.mode {
+        Mode::Normal => "Normal".to_string(),
+        Mode::Insert => "Insert".to_string(),
+        Mode::Command => format!(":{}", editor.command),
+    };
+
+    let status = format!(" {} | {}:{} ", cmd, editor.posy + 1, editor.posx + 1);
 
     let status_bar = Paragraph::new(status);
 

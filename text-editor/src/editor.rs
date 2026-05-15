@@ -2,11 +2,13 @@
 pub enum Mode {
     Normal,
     Insert,
+    Command,
 }
 
 pub struct Editor {
     left: Vec<char>,
     right: Vec<char>,
+    pub command: String,
     pub mode: Mode,
     pub posx: usize,
     pub posy: usize,
@@ -18,6 +20,7 @@ impl Editor {
             left: Vec::new(),
             right: Vec::new(),
             mode: Mode::Normal,
+            command: String::new(),
             posx: 0,
             posy: 0,
         }
@@ -42,24 +45,25 @@ impl Editor {
 
     // move cursor left
     pub fn move_left(&mut self, pos: usize) {
-        let mut leftsize = self.left.len();
-        while pos != leftsize {
-            self.right.push(self.left.pop().unwrap());
-            leftsize = self.left.len();
-            self.posx -= 1;
+        let leftsize = self.left.len();
+        if pos > leftsize {
+            // println!("Cannot move the cursor left to the specified position");
+        } else {
+            for _ in 0..pos {
+                self.right.push(self.left.pop().unwrap());
+                self.posx -= 1;
+            }
         }
     }
 
     // move cursor right
     pub fn move_right(&mut self, pos: usize) {
         let rightsize = self.right.len();
-        let mut i = 1;
         if pos > rightsize {
             // println!("Cannot move the cursor right to the specified position");
         } else {
-            while i <= pos {
+            for _ in 0..pos {
                 self.left.push(self.right.pop().unwrap());
-                i += 1;
                 self.posx += 1;
             }
         }
