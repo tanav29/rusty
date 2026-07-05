@@ -12,7 +12,6 @@ use ratatui::{
 };
 
 use std::io::{self, Result, Stdout};
-use std::slice::GetDisjointMutError;
 
 mod editor;
 
@@ -53,25 +52,24 @@ fn app(terminal: &mut Terminal<CrosstermBackend<Stdout>>) -> Result<()> {
                         editor.insert_character(c);
                     } else if editor.mode == Mode::Normal {
                         match c {
-                            'j' => editor.move_down(1),
-                            'k' => editor.move_up(1),
-                            'l' => editor.move_right(1),
-                            'h' => editor.move_left(1),
+                            'j' => editor.move_down(),
+                            'k' => editor.move_up(),
+                            'l' => editor.move_x(1),
+                            'h' => editor.move_x(-1),
                             'i' => editor.mode = Mode::Insert,
                             ':' => editor.mode = Mode::Command,
+                            '/' => editor.mode = Mode::Find,
                             _ => {}
                         }
-                    } else if editor.mode == Mode::Command {
+                    } else if editor.mode == Mode::Command || editor.mode == Mode::Find {
                         editor.command.push(c);
                     }
                 }
                 KeyCode::Enter => {
                     if editor.mode == Mode::Insert {
                         editor.insert_character('\n');
-                    } else if editor.mode == Mode::Command {
-                        // parse command
-                        editor.command = String::from("");
-                        editor.mode = Mode::Normal;
+                        editor.posy += 1;
+                        editor.posx = 0;
                     }
                 }
                 KeyCode::Delete => {
@@ -82,7 +80,7 @@ fn app(terminal: &mut Terminal<CrosstermBackend<Stdout>>) -> Result<()> {
                 KeyCode::Backspace => {
                     if editor.mode == Mode::Insert {
                         editor.backspace();
-                    } else if editor.mode == Mode::Command {
+                    } else if editor.mode == Mode::Command || editor.mode == Mode::Find {
                         editor.command.pop();
                     }
                 }
@@ -107,6 +105,7 @@ fn ui(frame: &mut Frame, editor: &Editor) {
         Mode::Normal => "Normal".to_string(),
         Mode::Insert => "Insert".to_string(),
         Mode::Command => format!(":{}", editor.command),
+        Mode::Find => format!("/{}", editor.command),
     };
 
     let status = format!(" {} | {}:{} ", cmd, editor.posy + 1, editor.posx + 1);

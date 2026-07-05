@@ -3,6 +3,7 @@ pub enum Mode {
     Normal,
     Insert,
     Command,
+    Find,
 }
 
 pub struct Editor {
@@ -10,8 +11,8 @@ pub struct Editor {
     right: Vec<char>,
     pub command: String,
     pub mode: Mode,
-    pub posx: usize,
-    pub posy: usize,
+    pub posx: isize,
+    pub posy: isize,
 }
 
 impl Editor {
@@ -44,46 +45,125 @@ impl Editor {
     }
 
     // move cursor left
-    pub fn move_left(&mut self, pos: usize) {
-        let leftsize = self.left.len();
-        if pos > leftsize {
-            // println!("Cannot move the cursor left to the specified position");
-        } else {
-            for _ in 0..pos {
-                self.right.push(self.left.pop().unwrap());
-                self.posx -= 1;
+    pub fn move_x(&mut self, delta: isize) {
+        if delta > 0 {
+            self.move_right(delta as usize);
+        } else if delta < 0 {
+            self.move_left((-delta) as usize);
+        }
+    }
+
+    // move cursor left by `count` characters
+    pub fn move_left(&mut self, count: usize) {
+        for _ in 0..count {
+            match self.left.pop() {
+                Some(c) => {
+                    self.right.push(c);
+                    self.posx -= 1;
+                }
+                None => break,
             }
         }
     }
 
-    // move cursor right
-    pub fn move_right(&mut self, pos: usize) {
-        let rightsize = self.right.len();
-        if pos > rightsize {
-            // println!("Cannot move the cursor right to the specified position");
-        } else {
-            for _ in 0..pos {
-                self.left.push(self.right.pop().unwrap());
-                self.posx += 1;
+    // move cursor right by `count` characters
+    pub fn move_right(&mut self, count: usize) {
+        for _ in 0..count {
+            match self.right.pop() {
+                Some(c) => {
+                    self.left.push(c);
+                    self.posx += 1;
+                }
+                None => break,
             }
         }
     }
 
-    pub fn move_down(&mut self, pos: usize) {
-        // pad: count the char till \0
-        // move the left pos till end of line for pos times
-        // move left pos to pad
+    pub fn move_down(&mut self) {
+        let mut column = 0;
+
+        // Find current column.
+        while let Some(&c) = self.left.last() {
+            if c == '\n' {
+                break;
+            }
+            self.move_left(1);
+            column += 1;
+        }
+
+        // Restore original position.
+        self.move_right(column);
+
+        // Move to start of next line.
+        let mut found_newline = false;
+        while let Some(&c) = self.right.last() {
+            self.move_right(1);
+            if c == '\n' {
+                found_newline = true;
+                break;
+            }
+        }
+
+        if !found_newline {
+            // No next line, stay at current position.
+            return;
+        }
+
+        self.posy += 1;
+
+        // Restore column on new line.
+        let mut moved = 0;
+        while moved < column {
+            match self.right.last() {
+                Some('\n') | None => break,
+                _ => {
+                    self.move_right(1);
+                    moved += 1;
+                }
+            }
+        }
     }
 
-    pub fn move_up(&mut self, pos: usize) {}
+    pub fn move_up(&mut self) {
+        // Distance from cursor to start of current line.
+        let mut column = 0;
 
-    pub fn move_cursor(&mut self, pos: usize) {
-        let leftsize = self.left.len();
+        while let Some(&c) = self.left.last() {
+            if c == '\n' {
+                break;
+            }
+            self.move_left(1);
+            column += 1;
+        }
 
-        if pos < leftsize {
-            self.move_left(pos);
-        } else {
-            self.move_right(pos - leftsize);
+        // Already on first line.
+        if self.left.is_empty() {
+            return;
+        }
+
+        // Cross newline to previous line.
+        self.move_left(1);
+
+        // Go to start of previous line.
+        while let Some(&c) = self.left.last() {
+            if c == '\n' {
+                break;
+            }
+            self.move_left(1);
+        }
+
+        self.posy -= 1;
+
+        // Restore column without crossing newline.
+        let mut moved = 0;
+        while moved < column {
+            match self.right.last() {
+                Some('\n') | None => break,
+                _ => {
+                    self.move_right(1);
+                    moved += 1;
+                }
+            }
         }
     }
 
@@ -118,26 +198,12 @@ impl Editor {
     }
 
     pub fn examine_string(&self) -> String {
-        let left: String = self.left.iter().collect();
-        let right: String = self.right.iter().rev().collect();
+        let left: String = self.left.iter().cloned().collect();
+        let right: String = self.right.iter().rev().cloned().collect();
         format!("{}|{}", left, right)
     }
 
-    pub fn find_and_replace(&mut self, find_what: char, replace_with: char) {
-        let mut count = 1;
-        let cursorpos = self.left.len();
-        self.move_cursor(0);
-
-        while self.right.is_empty() != true {
-            if self.right[self.right.len() - 1] == find_what {
-                self.delete();
-                self.insert_character(replace_with);
-            } else {
-                self.move_cursor(count);
-            }
-            count += 1;
-            self.move_right(1);
-        }
-        self.move_cursor(cursorpos);
+    pub fn cursor_position(&self) -> usize {
+        self.left.len()
     }
 }
