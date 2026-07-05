@@ -13,6 +13,8 @@ pub struct Editor {
     pub mode: Mode,
     pub posx: isize,
     pub posy: isize,
+    // desired column to restore when moving between lines
+    pub desired_column: usize,
 }
 
 impl Editor {
@@ -24,7 +26,13 @@ impl Editor {
             command: String::new(),
             posx: 0,
             posy: 0,
+            desired_column: 0,
         }
+    }
+
+    fn update_posx(&mut self) {
+        let col = self.left.iter().rev().take_while(|&&c| c != '\n').count();
+        self.posx = col as isize;
     }
 
     // insert list of characters at cursor
@@ -41,7 +49,8 @@ impl Editor {
     // insert character at cursor
     pub fn insert_character(&mut self, c: char) {
         self.left.push(c);
-        self.posx += 1;
+        self.update_posx();
+        self.desired_column = self.posx as usize;
     }
 
     // move cursor left
@@ -59,11 +68,13 @@ impl Editor {
             match self.left.pop() {
                 Some(c) => {
                     self.right.push(c);
-                    self.posx -= 1;
+                    // posx will be recomputed after the loop
                 }
                 None => break,
             }
         }
+        self.update_posx();
+        self.desired_column = self.posx as usize;
     }
 
     // move cursor right by `count` characters
@@ -72,29 +83,21 @@ impl Editor {
             match self.right.pop() {
                 Some(c) => {
                     self.left.push(c);
-                    self.posx += 1;
+                    // posx will be recomputed after the loop
                 }
                 None => break,
             }
         }
+        self.update_posx();
+        self.desired_column = self.posx as usize;
     }
 
     pub fn move_down(&mut self) {
-        let mut column = 0;
+        // compute current column without mutating buffers
+        let column = self.left.iter().rev().take_while(|&&c| c != '\n').count();
+        self.desired_column = column;
 
-        // Find current column.
-        while let Some(&c) = self.left.last() {
-            if c == '\n' {
-                break;
-            }
-            self.move_left(1);
-            column += 1;
-        }
-
-        // Restore original position.
-        self.move_right(column);
-
-        // Move to start of next line.
+        // Move to start of next line: find a newline in the right buffer
         let mut found_newline = false;
         while let Some(&c) = self.right.last() {
             self.move_right(1);
@@ -111,7 +114,7 @@ impl Editor {
 
         self.posy += 1;
 
-        // Restore column on new line.
+        // Restore column on new line up to desired_column
         let mut moved = 0;
         while moved < column {
             match self.right.last() {
@@ -122,26 +125,24 @@ impl Editor {
                 }
             }
         }
+
+        self.update_posx();
     }
 
     pub fn move_up(&mut self) {
-        // Distance from cursor to start of current line.
-        let mut column = 0;
+        // compute current column without mutating buffers
+        let column = self.left.iter().rev().take_while(|&&c| c != '\n').count();
+        self.desired_column = column;
 
-        while let Some(&c) = self.left.last() {
-            if c == '\n' {
-                break;
-            }
-            self.move_left(1);
-            column += 1;
-        }
-
-        // Already on first line.
-        if self.left.is_empty() {
+        // If there is no previous line, return.
+        if !self.left.iter().any(|&c| c == '\n') {
             return;
         }
 
-        // Cross newline to previous line.
+        // Move to start of current line
+        self.move_left(column);
+
+        // Cross newline to previous line
         self.move_left(1);
 
         // Go to start of previous line.
@@ -165,6 +166,8 @@ impl Editor {
                 }
             }
         }
+
+        self.update_posx();
     }
 
     pub fn backspace(&mut self) -> bool {
@@ -172,7 +175,8 @@ impl Editor {
             return false;
         } else {
             self.left.pop();
-            self.posx -= 1;
+            self.update_posx();
+            self.desired_column = self.posx as usize;
         }
         return true;
     }
